@@ -47,12 +47,12 @@ class AugMNIST(MNIST):
                                ' You can use download=True to download MNIST' +
                                ' and generate=True to generate the augmentations')
 
-        self.data = torch.load(
+        self.data, self.labels = torch.load(
             os.path.join(self.root, self.processed_folder, self.augmented_file)
         )
 
     def __getitem__(self, index):
-        img = self.data[index]
+        img, tgt = self.data[index], self.labels[index]
 
         # img = img.view(1, 28, 28)
         img = Image.fromarray(img.numpy(), mode='L')
@@ -60,7 +60,7 @@ class AugMNIST(MNIST):
         if self.transform is not None:
             img = self.transform(img)
 
-        return img
+        return img, tgt
 
     def __len__(self):
         return self.data.size(0)
@@ -72,11 +72,15 @@ class AugMNIST(MNIST):
         if self._check_exists():
             return
 
-        mnist_data, _ = torch.load(
+        mnist_data, mnist_labels = torch.load(
             os.path.join(self.root, self.processed_folder, self.training_file)
         )
 
         mnist_data = mnist_data[:5000, :, :]
+        mnist_labels = mnist_labels[:5000]
+
+        aug_labels = mnist_labels.unsqueeze(0).expand(self.batch_size,
+                                                      -1).t().contiguous().view(-1)
 
         T = np.linspace(-0.5, 0.5, self.batch_size)
 
@@ -90,4 +94,4 @@ class AugMNIST(MNIST):
         aug_data = aug_data.view(-1, 28, 28)
 
         with open(os.path.join(self.root, self.processed_folder, self.augmented_file), 'wb') as f:
-            torch.save(aug_data, f)
+            torch.save((aug_data, aug_labels), f)
